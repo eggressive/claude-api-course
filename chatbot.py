@@ -30,18 +30,26 @@ def chat(messages):
 # Start with an empty message list
 messages = []
 
-# Add the initial user question
-add_user_message(messages, "Define quantum computing in one sentence")
+# Interactive chatbot loop
+print("Chatbot started! Type 'exit' to quit.\n")
 
-# Get Claude's response
-answer = chat(messages)
+while True:
+    # Prompt the user to enter some input
+    user_input = input("You: ")
 
-# Add Claude's response to the conversation history
-add_assistant_message(messages, answer)
+    # Exit if user types 'exit'
+    if user_input.lower() == 'exit':
+        print("Goodbye!")
+        break
 
-# Add a follow-up question
-add_user_message(messages, "Write another sentence")
+    # Add user input to the message list
+    add_user_message(messages, user_input)
 
-# Get the follow-up response with full context
-final_answer = chat(messages)
-print(final_answer)
+    # Call the API
+    response = chat(messages)
+
+    # Add Claude's response to the message list
+    add_assistant_message(messages, response)
+
+    # Print the generated text
+    print(f"Claude: {response}\n")

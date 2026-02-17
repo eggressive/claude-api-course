@@ -19,29 +19,33 @@ def add_assistant_message(messages, text):
     messages.append(assistant_message)
 
 # Make a request to the API
-def chat(messages):
-    message = client.messages.create(
-        model=model,
-        max_tokens=1000,
-        messages=messages,
-    )
+def chat(messages, system=None):
+    params = {
+        "model": model,
+        "max_tokens": 1000,
+        "messages": messages,
+    }
+    
+    if system:
+        params["system"] = system
+    
+    message = client.messages.create(**params)
     return message.content[0].text
 
 # Start with an empty message list
 messages = []
 
+# System prompt to set the context for the tutor
+system = """
+You are a concise Python expert.
+Provide the most brief and direct answer possible.
+Use minimal words and get straight to the point.
+Avoid explanations unless absolutely necessary.
+"""
+
 # Add the initial user question
-add_user_message(messages, "Define quantum computing in one sentence")
+add_user_message(messages, "Write a Python function that checks a string for duplicate characters.")
 
 # Get Claude's response
-answer = chat(messages)
-
-# Add Claude's response to the conversation history
-add_assistant_message(messages, answer)
-
-# Add a follow-up question
-add_user_message(messages, "Write another sentence")
-
-# Get the follow-up response with full context
-final_answer = chat(messages)
-print(final_answer)
+answer = chat(messages, system=system)
+print(f"Claude: {answer}\n")

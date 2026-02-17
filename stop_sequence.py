@@ -19,29 +19,35 @@ def add_assistant_message(messages, text):
     messages.append(assistant_message)
 
 # Make a request to the API
-def chat(messages):
-    message = client.messages.create(
-        model=model,
-        max_tokens=1000,
-        messages=messages,
-    )
+def chat(messages, system=None, temperature=0.2, stop_sequences=[]):
+    params = {
+        "model": model,
+        "max_tokens": 1000,
+        "messages": messages,
+        "temperature": temperature,
+        "stop_sequences": stop_sequences
+    }
+    
+    if system:
+        params["system"] = system
+    
+    message = client.messages.create(**params)
     return message.content[0].text
 
 # Start with an empty message list
 messages = []
 
+# System prompt to set the context for the tutor
+# system = """
+# You are a patient math tutor.
+# Do not directly answer a student's questions.
+# Guide them to a solution step by step.
+# """
+
 # Add the initial user question
-add_user_message(messages, "Define quantum computing in one sentence")
+add_user_message(messages, "Count from 1 to 10")
 
 # Get Claude's response
-answer = chat(messages)
-
-# Add Claude's response to the conversation history
-add_assistant_message(messages, answer)
-
-# Add a follow-up question
-add_user_message(messages, "Write another sentence")
-
-# Get the follow-up response with full context
-final_answer = chat(messages)
-print(final_answer)
+# answer = chat(messages, system=system)
+answer = chat(messages, stop_sequences=[", 6"])
+print(f"Claude: {answer}\n")

@@ -19,29 +19,31 @@ def add_assistant_message(messages, text):
     messages.append(assistant_message)
 
 # Make a request to the API
-def chat(messages):
-    message = client.messages.create(
-        model=model,
-        max_tokens=1000,
-        messages=messages,
-    )
+def chat(messages, system=None):
+    params = {
+        "model": model,
+        "max_tokens": 1000,
+        "messages": messages,
+    }
+    
+    if system:
+        params["system"] = system
+    
+    message = client.messages.create(**params)
     return message.content[0].text
 
 # Start with an empty message list
 messages = []
 
 # Add the initial user question
-add_user_message(messages, "Define quantum computing in one sentence")
+add_user_message(messages, "Write a 1 sentence description of a fake database")
 
-# Get Claude's response
-answer = chat(messages)
+stream = client.messages.create(
+    model=model,
+    max_tokens=1000,
+    messages=messages,
+    stream=True
+)
 
-# Add Claude's response to the conversation history
-add_assistant_message(messages, answer)
-
-# Add a follow-up question
-add_user_message(messages, "Write another sentence")
-
-# Get the follow-up response with full context
-final_answer = chat(messages)
-print(final_answer)
+for event in stream:
+    print(event)
