@@ -1,0 +1,109 @@
+from anthropic import Anthropic
+from statistics import mean
+import json
+
+# Load env variables from .env file
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Initialize the Anthropic API client
+client = Anthropic()
+generation_model = "claude-haiku-4-5"  # Model for generating solutions
+grading_model = "claude-sonnet-4-5"  # Model for grading
+
+# Helper functions to handle the chat history
+def add_user_message(messages, text):
+    user_message = {"role": "user", "content": text}
+    messages.append(user_message)
+
+def add_assistant_message(messages, text):
+    assistant_message = {"role": "assistant", "content": text}
+    messages.append(assistant_message)
+
+# Make a request to the API
+def chat(messages, model, system=None, temperature=0.2, stop_sequences=[]):
+    params = {
+        "model": model,
+        "max_tokens": 1000,
+        "messages": messages,
+        "temperature": temperature,
+        "stop_sequences": stop_sequences
+    }
+
+    if system:
+        params["system"] = system
+
+    message = client.messages.create(**params)
+    return message.content[0].text
+
+# takes a test case and merges it with our prompt template
+def run_prompt(test_case):
+    """Merges the prompt and test case input, then returns the result"""
+    prompt = f"""
+Please solve the following task:
+
+{test_case["task"]}
+"""
+
+    messages = []
+    add_user_message(messages, prompt)
+    output = chat(messages, generation_model)
+    return output
+
+def grade_by_model(test_case, output):
+    # Create evaluation prompt
+    eval_prompt = f"""You are an expert code reviewer. Evaluate this AI-generated solution.
+
+Task: {test_case['task']}
+Solution: {output}
+
+Provide your evaluation as a structured JSON object with:
+- "strengths": An array of 1-3 key strengths
+- "weaknesses": An array of 1-3 key areas for improvement
+- "reasoning": A concise explanation of your assessment
+- "score": A number between 1-10"""
+
+    messages = []
+    add_user_message(messages, eval_prompt)
+    add_assistant_message(messages, "```json")
+
+    eval_text = chat(messages, grading_model, stop_sequences=["```"])
+    return json.loads(eval_text)
+
+# orchestrates running a single test case and grading the result
+def run_test_case(test_case):
+    """Calls run_prompt, then grades the result"""
+    output = run_prompt(test_case)
+    
+    # TODO - Grading
+    model_grade = grade_by_model(test_case, output)
+    score = model_grade["score"]
+    reasoning = model_grade["reasoning"]
+    
+    return {
+        "output": output,
+        "test_case": test_case,
+        "score": score,
+        "reasoning": reasoning
+    }
+
+#coordinates the entire evaluation process
+def run_eval(dataset):
+    """Loads the dataset and calls run_test_case with each case"""
+    results = []
+    
+    for test_case in dataset:
+        result = run_test_case(test_case)
+        results.append(result)
+
+    average_score = mean([result["score"] for result in results])
+    print(f"Average score: {average_score}")
+
+    return results
+
+with open("dataset.json", "r") as f:
+    dataset = json.load(f)
+
+results = run_eval(dataset)
+print(json.dumps(results, indent=2))
